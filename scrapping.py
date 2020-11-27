@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import pandas as pd
+from os import path
 
 
 def webToSoup(webpage):
@@ -64,8 +66,8 @@ def getOrganisationsLinks(webpages):
 
       Returns:
       ----------
-      urls(list(str)): urls of all individual organisations
-
+      urls(list(str)): urls of all individual organisations,
+      and also save them in a 'org_links.csv' file
       '''
     assert(type(webpages) == list)
 
@@ -82,22 +84,84 @@ def getOrganisationsLinks(webpages):
             org_link = a_tag.get('href')
             urls.append(urljoin(page, org_link))
 
+    # save the links to a file so that it can reused without having to search for links each time
+    df = pd.DataFrame(urls, columns=['Organalisation links'])
+    df.index += 1  # as index starts from 0, adding 1 makes it start from 1
+    df.to_csv('org_links.csv')
+
     return urls
+
+
+def extractOrganisationInfo(webfile):
+    ''' Scrap the data from organisational webpages in a tabular form
+
+    Parameters:
+    -----------
+    webfile(.csv file): .csv file containing url of the individual organisations 
+
+    Returns:
+    ----------
+    df: DataFrame consisting all organisational info in tabular form.
+    Also saves the data in 'org_info.csv' file
+
+    '''
+    df_link = pd.read_csv(webfile)
+
+    webpages = df_link['Organalisation links']
+
+    df = pd.DataFrame(columns=[], dtype="string")
+
+    # each webpage data is represented as a row in the data frame
+    for i, url in enumerate(webpages):
+
+        soup = webToSoup(url)
+
+        # the three major blocks of text namely {Organisation general information, Organisation's contact person, Organisation summary}
+        #  are represented using filedset tags
+        tags = soup.find_all("fieldset")
+
+        for tag in tags:
+
+            # rows in a block are inside div tag with class field
+            for row in tag.find_all("div", {"class": "field"}):
+
+                # left hand columns in the blocks are defined by div tag with class field-label
+                label_tag = row.find("div", {"class": "field-label"})
+
+                # left hand columns in the blocks are defined by div tag with class field-items
+                item_tag = row.find("div", {"class": "field-items"})
+
+                # add the item in the dataframe
+                df.at[i, label_tag.get_text()] = item_tag.get_text()
+
+    df.index += 1  # as index starts from 0, adding 1 makes it start from 1
+
+    df.to_csv('org_info.csv')
+    return df
 
 
 def main():
 
-    # mfp organisation page
-    mfp_org_page = 'http://www.e-mfp.eu/who-s-who'
+    # file containing organisations links for which data scrapping has to be done
+    weblinks_file = "org_links.csv"
 
-    # get sub pages where organisations are listed
-    sub_pages = getSubPagesLinks(mfp_org_page)
+    # if file not present, create the file by scrapping the website links
+    if not path.exists(weblinks_file):
 
-    # get links of all those organisations
-    org_links = getOrganisationsLinks(sub_pages)
+        print('org_links.csv file not found! Making one ...')
+        # mfp organisation page
+        mfp_org_page = 'http://www.e-mfp.eu/who-s-who'
 
-    print('Total organisations links: ', len(org_links))
-    print('\n', org_links)
+        # get sub pages where organisations are listed
+        sub_pages = getSubPagesLinks(mfp_org_page)
+
+        # get links of all those organisations
+        org_links = getOrganisationsLinks(sub_pages)
+
+        print('Total organisations links: ', len(org_links))
+        # print('\n', org_links)
+
+    extractOrganisationInfo(weblinks_file)
 
 
 if __name__ == "__main__":
