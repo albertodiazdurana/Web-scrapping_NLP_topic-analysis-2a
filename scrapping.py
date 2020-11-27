@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import pandas as pd
 from os import path
+from tqdm import tqdm
 
 
 def webToSoup(webpage):
@@ -49,7 +50,7 @@ def getSubPagesLinks(base):
     soup = webToSoup(base)
     urls = [base]
 
-    for tag in soup.find_all("li", {"class": "pager-item"}):
+    for tag in tqdm(soup.find_all("li", {"class": "pager-item"}), desc="Collecting sub pages..."):
         a_tag = tag.find("a")
         pageurl = a_tag.get('href')
         urls.append(urljoin(base, pageurl))
@@ -66,22 +67,24 @@ def getOrganisationsLinks(webpages):
 
       Returns:
       ----------
-      urls(list(str)): urls of all individual organisations,
-      and also save them in a 'org_links.csv' file
+      urls(list(str)): urls of all individual organisations.
+      Also save them in a 'org_links.csv' file
       '''
     assert(type(webpages) == list)
 
     urls = []
 
-    for i, page in enumerate(webpages):
+    for i in tqdm(range(len(webpages)), desc="Collecting org links..."):
 
-        print('Fetching urls on page ', i+1)
+        page = webpages[i]
         soup = webToSoup(page)
 
+        # organisation links are in the <td> tag
         for td_tag in soup.find_all("td", {"class": "views-field views-field-field-full-name"}):
 
             a_tag = td_tag.find("a")
             org_link = a_tag.get('href')
+            # join home page and relative link
             urls.append(urljoin(page, org_link))
 
     # save the links to a file so that it can reused without having to search for links each time
@@ -112,8 +115,9 @@ def extractOrganisationInfo(webfile):
     df = pd.DataFrame(columns=[], dtype="string")
 
     # each webpage data is represented as a row in the data frame
-    for i, url in enumerate(webpages):
+    for i in tqdm(range(len(webpages)), desc="Scrapping org info ..."):
 
+        url = webpages[i]
         soup = webToSoup(url)
 
         # the three major blocks of text namely {Organisation general information, Organisation's contact person, Organisation summary}
@@ -148,7 +152,7 @@ def main():
     # if file not present, create the file by scrapping the website links
     if not path.exists(weblinks_file):
 
-        print('org_links.csv file not found! Making one ...')
+        print('org_links.csv file not found! Making one ...\n')
         # mfp organisation page
         mfp_org_page = 'http://www.e-mfp.eu/who-s-who'
 
@@ -161,7 +165,10 @@ def main():
         print('Total organisations links: ', len(org_links))
         # print('\n', org_links)
 
+    # extract the org. info
     extractOrganisationInfo(weblinks_file)
+
+    print("\nDone")
 
 
 if __name__ == "__main__":
