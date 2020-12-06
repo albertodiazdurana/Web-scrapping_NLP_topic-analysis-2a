@@ -1,3 +1,13 @@
+
+''' 
+Author: Sumit Patidar
+Approach:
+   There are total of 9 subpages listed on the website, each containing around ~12 orgnisations urls.
+   1. Firstly, the urls of all those 9 subpages are extracted.
+   2. Then for each subpage, extraction of urls of all organisation listed on that subpage takes place. Finally, after visiting all subpages the urls of each organisation listed on the website are stored. These links are also saved in a csv file named `org_links.csv`.
+   3. Lastly, for each organisation page, scrapping of all the data in a tabular form is conducted and saved in a `org_info.csv`.
+'''
+
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
