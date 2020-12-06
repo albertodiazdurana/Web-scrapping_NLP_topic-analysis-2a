@@ -29,7 +29,7 @@ def webToSoup(webpage):
     src = result.content
 
     # parse and process the source using Beautiful Soup object
-    soup = BeautifulSoup(src, 'lxml')
+    soup = BeautifulSoup(src, 'html5lib')
 
     return soup
 
@@ -89,10 +89,38 @@ def getOrganisationsLinks(webpages):
 
     # save the links to a file so that it can reused without having to search for links each time
     df = pd.DataFrame(urls, columns=['Organalisation links'])
-    df.index += 1  # as index starts from 0, adding 1 makes it start from 1
+
     df.to_csv('org_links.csv')
 
     return urls
+
+
+def getlistContries(soup):
+    ''' Helper function to extract list of continents and countries from a given tag
+
+     Parameters:
+     -----------
+     soup(BeautifulSoup): tag
+
+     Returns:
+     ----------
+     txt(str): string containing list of continents along with countries
+
+     '''
+    conts_tags = soup.find_all("div", {"class": "continent"})
+    txt = ''
+    for c in conts_tags:
+
+        if c.find("a"):  # there exist lists of countries in these continents
+            txt += c.a.text + ": "
+            for li in c.find_all("li"):
+                li.replace_with(li.text + "\n")
+                txt += '\n' + li.get_text()
+
+            txt += '\n\n'
+        else:
+            txt += c.text + '\n\n'
+    return txt
 
 
 def extractOrganisationInfo(webfile):
@@ -135,10 +163,18 @@ def extractOrganisationInfo(webfile):
                 # left hand columns in the blocks are defined by div tag with class field-items
                 item_tag = row.find("div", {"class": "field-items"})
 
-                # add the item in the dataframe
-                df.at[i, label_tag.get_text()] = item_tag.get_text()
+                # replace br tags with newline
+                for br in item_tag.find_all("br"):
+                    br.replace_with("\n")
 
-    df.index += 1  # as index starts from 0, adding 1 makes it start from 1
+                label_txt = label_tag.get_text()
+                item_txt = item_tag.get_text()
+
+                if 'Countries of intervention' in label_txt:
+                    item_txt = getlistContries(item_tag)
+
+                # add the item in the dataframe
+                df.at[i, label_txt] = item_txt
 
     df.to_csv('org_info.csv')
     return df
