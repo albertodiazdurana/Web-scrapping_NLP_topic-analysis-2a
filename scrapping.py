@@ -123,11 +123,9 @@ def getlistContries(soup):
 
         if c.find("a"):  # there exist lists of countries in these continents
             txt += c.a.text + ": "
-            for li in c.find_all("li"):
-                li.replace_with(li.text + "\n")
-                txt += '\n' + li.get_text()
+            country_tag = c.find("div", {"class": "countries"})
+            txt += country_tag.get_text() + "\n\n"
 
-            txt += '\n\n'
         else:
             txt += c.text + '\n\n'
     return txt
@@ -170,12 +168,16 @@ def extractOrganisationInfo(webfile):
                 # left hand columns in the blocks are defined by div tag with class field-label
                 label_tag = row.find("div", {"class": "field-label"})
 
-                # left hand columns in the blocks are defined by div tag with class field-items
+                # right hand columns in the blocks are defined by div tag with class field-items
                 item_tag = row.find("div", {"class": "field-items"})
 
                 # replace br tags with newline
                 for br in item_tag.find_all("br"):
                     br.replace_with("\n")
+
+                # replace li tags with newline
+                for li in item_tag.find_all("li"):
+                    li.replace_with(li.text + "\n")
 
                 label_txt = label_tag.get_text()
                 item_txt = item_tag.get_text()
